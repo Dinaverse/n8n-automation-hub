@@ -1,0 +1,146 @@
+{
+  "name": "PRO - Automated Engineering Agent (Final Syntax)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Input",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-300, 0],
+      "pinData": {
+        "main": [
+          [
+            {
+              "json": {
+                "query": "hello"
+              }
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "telegram-polling-trigger",
+      "name": "Telegram Command",
+      "type": "n8n-nodes-telegram-polling.telegramPollingTrigger",
+      "typeVersion": 1,
+      "position": [-300, -200],
+      "credentials": {
+        "telegramApi": {
+          "id": "mufungizibot-cred-001"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "query",
+              "value": "={{ $json.message?.text || $json.query || 'Hi' }}"
+            }
+          ]
+        }
+      },
+      "id": "unify-input",
+      "name": "Input Resolver",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [-50, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"qwen2.5-coder:14b\",\n  \"prompt\": \"User intent: '{{ $json.query }}'.\\n\\n1. Determine if this requires running a script (EXECUTE) or just talking (CHAT).\\n2. Tools: SCAN (/home/node/scripts/scanner.py), REPORT (/home/node/scripts/create_report_pptx.py), DOCKER (docker ps).\\n\\nResponse format:\\nMODE: [EXECUTE/CHAT]\\nMESSAGE: [Your reply or the command to run]\",\n  \"stream\": false\n}",
+        "options": {}
+      },
+      "id": "ai-brain",
+      "name": "AI Logic (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [150, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response.toUpperCase() }}",
+              "operation": "contains",
+              "value2": "MODE: EXECUTE"
+            }
+          ]
+        }
+      },
+      "id": "mode-switch",
+      "name": "Is Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.response;\nconst command = raw.split(/MESSAGE:/i)[1]?.trim() || raw;\nconst { execSync } = require('child_process');\n\ntry {\n  const stdout = execSync(command).toString();\n  return [{ stdout, stderr: '', command }];\n} catch (error) {\n  return [{ stdout: '', stderr: error.message, command }];\n}"
+      },
+      "id": "execute-command",
+      "name": "Execute Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, -100]
+    },
+    {
+      "parameters": {
+        "chatId": "877039603",
+        "text": "🤖 **Assistant**\n\n{{ $json.response.split(/MESSAGE:/i)[1]?.trim() || $json.response.replace('MODE: CHAT', '').replace('MODE: EXECUTE', '').trim() }}"
+      },
+      "id": "chat-reply",
+      "name": "Direct Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [650, 100],
+      "credentials": {
+        "telegramApi": {
+          "id": "mufungizibot-cred-001"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "877039603",
+        "text": "🛠️ **Execution Result**\n\n**Cmd:** `{{ $json.command }}`\n\n```\n{{ $json.stdout || $json.stderr }}\n```"
+      },
+      "id": "exec-report",
+      "name": "Command Log",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [900, -100],
+      "credentials": {
+        "telegramApi": {
+          "id": "mufungizibot-cred-001"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Input": { "main": [[ { "node": "Input Resolver", "type": "main", "index": 0 } ]] },
+    "Telegram Command": { "main": [[ { "node": "Input Resolver", "type": "main", "index": 0 } ]] },
+    "Input Resolver": { "main": [[ { "node": "AI Logic (Ollama)", "type": "main", "index": 0 } ]] },
+    "AI Logic (Ollama)": { "main": [[ { "node": "Is Command?", "type": "main", "index": 0 } ]] },
+    "Is Command?": {
+      "main": [
+        [ { "node": "Execute Script", "type": "main", "index": 0 } ],
+        [ { "node": "Direct Reply", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Execute Script": { "main": [[ { "node": "Command Log", "type": "main", "index": 0 } ]] }
+  }
+}

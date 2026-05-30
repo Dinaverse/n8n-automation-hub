@@ -1,0 +1,226 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "When Clicked",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {},
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 500],
+      "triggerData": {
+        "rule": {
+          "dayOfMonth": null,
+          "hour": 9,
+          "minute": 0,
+          "second": 0
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "taskStatus",
+              "value": "pending"
+            },
+            {
+              "name": "taskName",
+              "value": "= {{ $input.json.task_name || 'Automated Task' }}"
+            }
+          ]
+        }
+      },
+      "id": "set-task-context",
+      "name": "Set Task Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5-coder:14b",
+        "prompt": "You are a task execution coordinator. Analyze this task and provide:\n1. Task summary\n2. Recommended execution steps\n3. Estimated time\n4. Potential risks\n\nTask: {{ $json.taskName }}\nStatus: {{ $json.taskStatus }}",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "ai-task-analyzer",
+      "name": "AI Task Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [700, 400],
+      "credentials": {
+        "ollamaApi": {
+          "id": "YOUR_OLLAMA_CRED_ID",
+          "name": "Local Ollama"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "{{ $json.notificationEmail }}",
+        "subject": "Task Status: {{ $json.taskName }}",
+        "textOnly": false,
+        "htmlBody": "<h3>Task: {{ $json.taskName }}</h3><p>Analysis:</p><p>{{ $json.response }}</p><p>Status: ✅ Processed</p>"
+      },
+      "id": "notify-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [920, 250],
+      "credentials": {
+        "emailAccount": {
+          "id": "YOUR_EMAIL_CRED_ID",
+          "name": "My Email"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "📋 **Task Update**: {{ $json.taskName }}\n🤖 **AI Analysis**: {{ $json.response }}\n✅ **Status**: Processed"
+            }
+          ]
+        }
+      },
+      "id": "notify-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [920, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discordapp.com/api/webhooks/YOUR/DISCORD/WEBHOOK",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "Task **{{ $json.taskName }}** has been processed! Check email for full analysis."
+            }
+          ]
+        }
+      },
+      "id": "notify-discord",
+      "name": "Send Discord Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [920, 550]
+    },
+    {
+      "parameters": {
+        "dataToInsert": {
+          "values": [
+            {
+              "column": "task_name",
+              "value": "{{ $json.taskName }}"
+            },
+            {
+              "column": "ai_analysis",
+              "value": "{{ $json.response }}"
+            },
+            {
+              "column": "processed_at",
+              "value": "= NOW()"
+            },
+            {
+              "column": "status",
+              "value": "completed"
+            }
+          ]
+        },
+        "table": "task_logs",
+        "pgn8nWorkflowCredentialsType": "pgn8n"
+      },
+      "id": "log-database",
+      "name": "Log to Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [920, 700],
+      "credentials": {
+        "postgres": {
+          "id": "YOUR_DB_CRED_ID",
+          "name": "My Database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Clicked": {
+      "main": [
+        [
+          {
+            "node": "Set Task Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Task Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Task Context": {
+      "main": [
+        [
+          {
+            "node": "AI Task Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Task Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Discord Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

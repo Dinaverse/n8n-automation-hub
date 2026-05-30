@@ -1,0 +1,72 @@
+{
+  "name": "Autonomous Script Executor",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "When Clicked",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "task_input", "value": "= {{ $input.json.task || 'Generate a progress report' }}" }
+          ]
+        }
+      },
+      "id": "set-input",
+      "name": "User Intent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5-coder:14b\",\n  \"prompt\": \"Decide which local script to run based on this intent: '{{ $json.task_input }}'.\\n\\nOptions:\\n- SCAN: python3 /home/node/scripts/scanner.py\\n- REPORT: python3 /home/node/scripts/create_report_pptx.py\\n- AUDIO: bash /home/node/scripts/audio_fix_permanent.sh\\n\\nReturn ONLY the exact command string to execute.\",\n  \"stream\": false\n}",
+        "options": {}
+      },
+      "id": "ai-decision",
+      "name": "AI Orchestrator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.response.trim() }}"
+      },
+      "id": "execute-script",
+      "name": "Execute Local Program",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 0]
+    },
+    {
+      "parameters": {
+        "chatId": "877039603",
+        "text": "=🛠️ **Autonomous Execution Report**\n\n**Command:** `{{ $node[\"AI Orchestrator\"].json.response }}`\n\n**Output:**\n```\n{{ $json.stdout || $json.stderr }}\n```"
+      },
+      "id": "notify-telegram",
+      "name": "Telegram Log",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [900, 0],
+      "credentials": {
+        "telegramApi": { "id": "mufungizibot-cred-001" }
+      }
+    }
+  ],
+  "connections": {
+    "When Clicked": { "main": [[ { "node": "User Intent", "type": "main", "index": 0 } ]] },
+    "User Intent": { "main": [[ { "node": "AI Orchestrator", "type": "main", "index": 0 } ]] },
+    "AI Orchestrator": { "main": [[ { "node": "Execute Script", "type": "main", "index": 0 } ]] },
+    "Execute Script": { "main": [[ { "node": "Telegram Log", "type": "main", "index": 0 } ]] }
+  }
+}

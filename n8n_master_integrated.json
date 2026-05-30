@@ -1,0 +1,182 @@
+{
+  "name": "Master Task Coordinator (Integrated)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "When Clicked",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {},
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 500],
+      "triggerData": {
+        "rule": { "hour": 9, "minute": 0 }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            { "name": "taskStatus", "stringValue": "pending" },
+            { "name": "taskName", "stringValue": "= {{ $input.json.task_name || 'Automated Task' }}" }
+          ]
+        }
+      },
+      "id": "set-task-context",
+      "name": "Set Task Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [300, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5-coder:14b\",\n  \"prompt\": \"Analyze this task: {{ $json.taskName }}. End with 'Status: Success' or 'Status: Failed'.\",\n  \"stream\": false\n}",
+        "options": {}
+      },
+      "id": "ai-task-analyzer",
+      "name": "AI Task Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response.toLowerCase().includes('failed') ? 'failed' : 'success' }}",
+              "value2": "failed"
+            }
+          ]
+        }
+      },
+      "id": "is-task-failed",
+      "name": "Is Task Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 400]
+    },
+    {
+      "parameters": {
+        "operation": "sms",
+        "message": "🚨 ALERT: Task {{ $node[\"Set Task Context\"].json.taskName }} FAILED."
+      },
+      "id": "notify-twilio",
+      "name": "Twilio SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "877039603",
+        "text": "🚨 **Failure**: {{ $node[\"Set Task Context\"].json.taskName }} needs attention."
+      },
+      "id": "notify-telegram-fail",
+      "name": "Telegram Fail",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1000, 350]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.datadoghq.com/api/v1/series",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "metric", "value": "n8n.task.failure" },
+            { "name": "points", "value": "[[{{ Math.floor(Date.now()/1000) }}, 1]]" }
+          ]
+        }
+      },
+      "id": "log-datadog",
+      "name": "Datadog Metric",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "sendTo": "admin@example.com",
+        "subject": "Task Success: {{ $node[\"Set Task Context\"].json.taskName }}",
+        "htmlBody": "✅ Processed: {{ $json.response }}"
+      },
+      "id": "notify-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1000, 650]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK"
+      },
+      "id": "notify-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1200, 650]
+    },
+    {
+      "parameters": {
+        "chatId": "877039603",
+        "text": "✅ **Success**: {{ $node[\"Set Task Context\"].json.taskName }} processed."
+      },
+      "id": "notify-telegram-success",
+      "name": "Telegram Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1400, 650],
+      "credentials": {
+        "telegramApi": {
+          "id": "mufungizibot-cred-001",
+          "name": "Mufungizibot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataToInsert": { "table": "task_logs" }
+      },
+      "id": "log-database",
+      "name": "Log to Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1600, 650]
+    }
+  ],
+  "connections": {
+    "When Clicked": { "main": [[ { "node": "Set Task Context", "type": "main", "index": 0 } ]] },
+    "Schedule Trigger": { "main": [[ { "node": "Set Task Context", "type": "main", "index": 0 } ]] },
+    "Set Task Context": { "main": [[ { "node": "AI Task Analyzer", "type": "main", "index": 0 } ]] },
+    "AI Task Analyzer": { "main": [[ { "node": "Is Task Failed?", "type": "main", "index": 0 } ]] },
+    "Is Task Failed?": {
+      "main": [
+        [
+          { "node": "Twilio SMS", "type": "main", "index": 0 },
+          { "node": "Telegram Fail", "type": "main", "index": 0 },
+          { "node": "Datadog Metric", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Send Email Notification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Email Notification": { "main": [[ { "node": "Send Slack Notification", "type": "main", "index": 0 } ]] },
+    "Send Slack Notification": { "main": [[ { "node": "Telegram Success", "type": "main", "index": 0 } ]] },
+    "Telegram Success": { "main": [[ { "node": "Log to Database", "type": "main", "index": 0 } ]] }
+  }
+}
