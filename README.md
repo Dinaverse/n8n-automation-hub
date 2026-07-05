@@ -2,7 +2,7 @@
 
 > *Centralized n8n workflow definitions for lab orchestration, security automation, infrastructure management, and autonomous incident response within the sovereign lab.*
 
-Workflows are the orchestration layer. Every complex operation — from security scans to infrastructure deployment to incident response — is decomposed into modular, reusable n8n workflows that execute autonomously or via AI agent trigger.
+Workflows are the orchestration layer. Every complex operation — from security scans to infrastructure deployment to incident response — is decomposed into modular, reusable n8n workflows that execute autonomously based on schedules, webhooks, or AI agent decisions.
 
 ---
 
@@ -48,405 +48,251 @@ n8n-automation-hub/
 │   ├── infrastructure/
 │   │   ├── gpu-health-monitor.json             GPU cluster monitoring
 │   │   ├── node-deployment.json                Automated node setup
-│   │   └── backup-orchestration.json           Scheduled backup coordination
-│   ├── monitoring/
-│   │   ├── metric-collection.json              Prometheus data collection
-│   │   ├── alert-aggregation.json              Centralized alerting
-│   │   └── dashboard-update.json               Grafana dashboard refresh
-│   └── examples/
-│       ├── simple-webhook-trigger.json         Basic webhook example
-│       └── multi-step-workflow.json            Complex workflow pattern
-│
-├── credentials/                                 (Credential templates)
-│   ├── ollama-connection.json                  Ollama API credentials
-│   ├── prometheus-scrape.json                  Prometheus settings
-│   ├── ssh-hosts.json                          SSH key management
-│   ├── github-api.json                         GitHub integration
-│   └── [service-name].json                     Service credentials template
-│
-├── config/                                      (Configuration)
-│   ├── n8n-env.example                         Environment variables template
-│   ├── webhook-settings.yaml                   Webhook configuration
-│   ├── workflow-triggers.yaml                  Trigger conditions
-│   └── secrets-vault.encrypted                 Encrypted credential storage
-│
-├── templates/                                   (Reusable workflow components)
-│   ├── http-request-template.json              HTTP request node setup
-│   ├── error-handling.json                     Error trap & notification
-│   ├── logging-template.json                   Structured logging
-│   └── retry-strategy.json                     Retry logic with backoff
-│
-├── docs/                                        (Documentation)
-│   ├── WORKFLOW_GUIDE.md                       Creating & editing workflows
-│   ├── TRIGGER_SETUP.md                        Webhook, schedule, AI triggers
-│   ├── INTEGRATION_GUIDE.md                    Service integrations (Ollama, SSH, etc)
-│   ├── CREDENTIAL_MANAGEMENT.md                Managing secrets securely
-│   └── EXAMPLES.md                             Real workflow examples
-│
-├── scripts/                                     (Automation & deployment)
-│   ├── import-workflows.sh                     Bulk import workflows
-│   ├── export-workflows.sh                     Backup workflows to JSON
-│   ├── backup-n8n-data.sh                      Full n8n database backup
-│   └── restore-workflows.sh                    Restore from backup
-│
-├── docker-compose.yml                          n8n self-hosted deployment
-├── docker-compose.override.yml                 Local development overrides
-└── requirements.txt                            Python dependencies (for helpers)
+│   │   └── backup-orchestrator.json            Distributed backup coordination
+│   └── ai-integration/
+│       ├── ollama-inference.json               LLM task dispatch
+│       ├── gemini-cli-bridge.json              External AI integration
+│       └── model-training-pipeline.json        Automated fine-tuning
+├── credentials/                                 (Encrypted credential templates)
+│   ├── ssh-keys.template                       Node SSH access
+│   ├── api-tokens.template                     Service API credentials
+│   └── prometheus.template                     Monitoring auth
+├── triggers/                                    (Webhook & schedule configs)
+│   ├── webhooks/
+│   │   ├── github-events.json                  GitHub webhook listener
+│   │   ├── alert-receiver.json                 Security alert ingestion
+│   │   └── manual-dispatch.json                On-demand execution
+│   └── schedules/
+│       ├── hourly-monitoring.json              Hourly health checks
+│       ├── daily-reports.json                  Daily summary generation
+│       └── weekly-maintenance.json             Weekly infrastructure tasks
+├── docker-compose.yml                          n8n stack deployment
+└── docs/
+    ├── DEPLOYMENT.md                           Setup & configuration guide
+    ├── WORKFLOW_GUIDE.md                       Workflow design patterns
+    └── INTEGRATION.md                          Service integration reference
 ```
 
 ---
 
-## 🔄 Core Workflows
+## 🚀 Core Workflows
 
-### **🤖 Autonomous Executor** (`autonomous-executor.json`)
-High-level task orchestration driven by AI agents.
+### 🤖 **Autonomous Executor** (`autonomous-executor.json`)
+- **Purpose:** Central AI-driven workflow executor
+- **Trigger:** AI agent decisions, manual dispatch webhooks
+- **Actions:**
+  - Accept task definitions from Gemini CLI
+  - Decompose into n8n sub-workflows
+  - Execute with error handling & retry logic
+  - Return results to agent for decision-making
+- **Integrations:** Ollama, SSH nodes, Prometheus, logging system
 
-**Triggers:**
-- Webhook from Gemini CLI agent
-- n8n schedule (every 5 minutes)
-- Manual trigger via HTTP API
+### 📋 **Pro Engineering Agent** (`pro-engineering-agent.json`)
+- **Purpose:** Infrastructure task management & orchestration
+- **Trigger:** Hourly schedule, infrastructure alerts
+- **Actions:**
+  - Monitor all lab nodes for health/performance
+  - Detect capacity constraints
+  - Trigger automated scaling/rebalancing
+  - Generate capacity reports
+- **Integrations:** Node SSH, Prometheus, alerting system
 
-**Flow:**
+### 🔒 **Security & Threat Detection**
+- **Real-time Log Analysis:** Parse Suricata IDS, system logs, application logs
+- **Threat Detection:** Pattern matching, anomaly scoring, alert enrichment
+- **Incident Response:** Auto-escalation, evidence collection, remediation workflows
+- **Integrations:** Suricata, Prometheus, email alerts, Slack webhooks
+
+### 💾 **Infrastructure Management**
+- **GPU Health Monitor:** Track NVIDIA GPU utilization, temperature, errors
+- **Node Deployment:** Automated provisioning via Proxmox/LXC
+- **Backup Orchestrator:** Distributed backup scheduling, verification, retention
+- **Integrations:** Proxmox API, NVIDIA monitoring, distributed storage
+
+### 🧠 **AI Integration Layer**
+- **Ollama Inference:** Dispatch tasks to local LLM cluster
+- **Gemini CLI Bridge:** External AI model integration
+- **Model Training Pipeline:** Fine-tuning automation on GPU cluster
+- **Integrations:** Ollama API, Gemini CLI, CUDA nodes
+
+---
+
+## ⚙️ Execution Flow
+
 ```
-Incoming Task (AI Agent or Webhook)
-  ↓
-Parse Task + Extract Parameters
-  ↓
-Route to Appropriate Workflow (Security / Infrastructure / Monitoring)
-  ↓
-Execute + Monitor Progress
-  ↓
-Aggregate Results
-  ↓
-Return to Caller + Log Outcome
+┌────────────────────────────────────────────────────────────────────────────┐
+│                      Trigger Sources                             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐ │
+│  │ AI Agent    │  │   Webhooks   │  │  Cron Schedules      │ │
+│  │ Decisions   │  │  (GitHub,    │  │  (Hourly, Daily,     │ │
+│  │             │  │   Alerts)    │  │   Weekly)            │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬─────────────────┘ │
+│         │                │                 │                │
+└─────────┼─────────────────┼─────────────────┼────────────────┘
+          │                │                 │
+          └────────────────┼─────────────────┘
+                          │
+              ┌───────────▼──────────┐
+              │   n8n Workflow Engine    │
+              │  (Decision Logic)        │
+              └───────────┬──────────┘
+                          │
+        ┌─────────────────┼────────────────────┐
+        │                 │                  │
+   ┌────▼────┐      ┌────────────┐    ┌──────▼──┐
+   │Security │      │Infrastructure│   │ AI Task │
+   │Workflows│      │  Workflows   │   │ Dispatch│
+   └────┬────┘      └────┬────────┘    └──────┬──┘
+        │                │                 │
+        └────────────────┼─────────────────┘
+                        │
+            ┌──────────▼─────────┐
+            │ Lab Nodes & │
+            │ External Services     │
+            └─────────────────────┘
 ```
 
-**Capabilities:**
-- Task classification and routing
-- Parameter validation and sanitization
-- Parallel execution of independent tasks
-- Result aggregation and error handling
-- Structured logging for audit trails
+---
+
+## 🔐 Webhook Integration Points
+
+### GitHub Events
+- Endpoint: `/webhook/github-events`
+- Triggers: Push, PR, Release, Issue
+- Use Case: Auto-deploy updates, trigger security scans
+
+### Security Alerts
+- Endpoint: `/webhook/alert-receiver`
+- Triggers: IDS alerts, log anomalies, system warnings
+- Use Case: Immediate incident response
+
+### Manual Dispatch
+- Endpoint: `/webhook/manual-dispatch`
+- Payload: `{ task: string, params: object }`
+- Use Case: Ad-hoc workflow execution
 
 ---
 
-### **⚙️ Pro Engineering Agent** (`pro-engineering-agent.json`)
-Infrastructure operations: deployments, configuration, remediation.
+## 📊 Monitoring & Metrics
 
-**Capabilities:**
-- SSH command execution on nodes
-- Docker container management (restart, scale, logs)
-- Service health checks & automatic recovery
-- Configuration file updates via templating
-- Database operations (backups, restores, migrations)
-- Log aggregation and analysis
-- Performance metric collection
+All n8n workflows export Prometheus metrics:
 
-**Supported Operations:**
-- Create/destroy containers
-- Deploy configurations to multiple hosts
-- Execute maintenance routines
-- Rollback failed deployments
+```
+n8n_workflow_executions_total          # Total workflow runs
+n8n_workflow_duration_seconds          # Execution time
+n8n_workflow_errors_total              # Failed executions
+n8n_task_queue_depth                   # Pending tasks
+n8n_node_execution_time                # Individual node timing
+```
 
----
-
-### **🌐 Master Integrated Hub** (`master-integrated.json`)
-Central coordination for multi-service operations connecting all lab services.
-
-**Features:**
-- Unified service orchestration across all lab components
-- Real-time status aggregation from all nodes
-- Centralized event logging and correlation
-- Cross-service dependency management
-- Automated failover and recovery coordination
-
-**Integration Points:**
-- Ollama LLM inference cluster
-- Prometheus metrics collection
-- Suricata IDS threat detection
-- Docker container fleet
-- SSH node management
-- GitHub repository workflows
-
----
-
-### **📋 Task Coordinator** (`task-coordinator.json`)
-Priority-based task queue management with duplicate prevention and resource distribution.
-
-**Features:**
-- Priority-based task queuing (High/Normal/Low)
-- Duplicate task detection and consolidation
-- Resource availability checking before execution
-- Fair load distribution across nodes
-- Task timeout and retry management
-- Historical task tracking and analytics
-
----
-
-## 🛡️ Security & Monitoring Workflows
-
-### **📊 Log Analysis Workflow** (`security/log-analysis-workflow.json`)
-Real-time log aggregation and anomaly detection.
-
-**Functions:**
-- Collect logs from all lab nodes via SSH/syslog
-- Parse and normalize log formats
-- Anomaly detection via statistical analysis
-- Alert on threshold violations
-- Export to central SIEM or Elasticsearch
-
----
-
-### **🚨 Threat Detection Workflow** (`security/threat-detection.json`)
-Triggered by Morpheus or security agents on suspected threats.
-
-**Capabilities:**
-- Network traffic analysis (via Suricata alerts)
-- Behavioral anomaly detection
-- Malware signature scanning
-- Log pattern matching
-- Cross-reference with threat intel databases
-- Escalation to incident response workflows
-
----
-
-### **🔴 Incident Response Workflow** (`security/incident-response.json`)
-Automated response: Detection → Containment → Analysis → Remediation → Verification
-
-**Steps:**
-1. **Detection:** Receive alert from threat detection workflow
-2. **Containment:** Isolate affected node/service
-3. **Analysis:** Gather forensic data, logs, memory dumps
-4. **Remediation:** Apply patches, restart services, restore from backup
-5. **Verification:** Confirm remediation, return to normal operations
-6. **Documentation:** Generate incident report with timeline
-
----
-
-## 🏗️ Infrastructure Workflows
-
-### **💻 GPU Health Monitor** (`infrastructure/gpu-health-monitor.json`)
-Continuous GPU cluster health tracking with automatic remediation on alerts.
-
-**Monitoring:**
-- GPU temperature and power consumption
-- Memory utilization across 4x P106-100 cluster
-- CUDA process monitoring
-- Driver stability checks
-- Thermal throttling detection
-
-**Automatic Actions:**
-- Reduce compute load on high temp
-- Restart stalled CUDA processes
-- Alert on driver crashes
-- Schedule maintenance windows
-
----
-
-### **🚀 Node Deployment Workflow** (`infrastructure/node-deployment.json`)
-Automated node setup from bare metal to operational cluster member.
-
-**Stages:**
-- OS provisioning and initial config
-- Dependency installation
-- Service deployment (Docker, monitoring agents)
-- Network configuration and DNS registration
-- Health verification and integration testing
-
----
-
-## 📊 Monitoring Workflows
-
-### **📈 Metric Collection Workflow** (`monitoring/metric-collection.json`)
-Aggregate Prometheus metrics from all nodes every 30 seconds.
-
-**Metrics Collected:**
-- CPU, memory, disk utilization
-- Network bandwidth and latency
-- Docker container stats
-- GPU metrics (temperature, power, utilization)
-- Custom application metrics
-
----
-
-### **🚨 Alert Aggregation Workflow** (`monitoring/alert-aggregation.json`)
-Centralize alerts, deduplicate, score severity, notify team.
-
-**Processing:**
-- Alert deduplication (within 5-minute window)
-- Severity scoring based on impact
-- Alert correlation (related alerts grouped)
-- Notification routing (email, Slack, webhook)
-- Historical tracking and alerting trends
-
----
-
-## 🔌 Service Integrations
-
-| Service | Integration | Purpose |
-|---------|-------------|----------|
-| **Ollama LLM** | REST API (port 11434) | AI-driven analysis and decision making |
-| **SSH Nodes** | SSH execution nodes | Direct node operations and commands |
-| **Prometheus** | HTTP API (port 9090) | Metrics-driven automation and alerting |
-| **GitHub** | REST API + webhooks | Repo management, issue automation, CI/CD |
-| **Suricata IDS** | EVE JSON logs | Security event ingestion and triggering |
-| **Docker** | Remote API | Container orchestration and management |
-| **Grafana** | HTTP API | Dashboard updates and visualization |
+Dashboard available at: `http://<dell-precision-ip>:3100` (Grafana)
 
 ---
 
 ## 🚀 Deployment
 
 ### Prerequisites
-- Docker & Docker Compose (latest versions)
-- Port 5678 available (n8n UI)
-- SSH keys for node access configured
-- Ollama running on port 11434
-- Prometheus running and scraping all nodes
-- Firewall rules allowing webhook ingress
+- Docker & Docker Compose
+- SSH access to all lab nodes
+- Ollama running on Arch cluster
+- Prometheus for metrics collection
 
 ### Quick Start
 
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone https://github.com/Dinaverse/n8n-automation-hub.git
 cd n8n-automation-hub
 
-# Copy environment template
-cp config/n8n-env.example .env
+# 2. Copy credential templates
+cp credentials/*.template credentials/
+# Edit with your actual credentials
 
-# Edit .env with your settings
-nano .env
-
-# Start n8n with Docker Compose
+# 3. Start n8n stack
 docker-compose up -d
 
-# Access n8n UI
-open http://localhost:5678
+# 4. Access n8n UI
+# Open: http://localhost:5678
+
+# 5. Import workflows
+# Copy JSON files from ./workflows/ into n8n UI
 ```
 
-### Initial Setup
+### Configuration
 
-1. **Import Workflows:**
-   ```bash
-   bash scripts/import-workflows.sh
-   ```
-
-2. **Configure Credentials:**
-   - Navigate to Credentials in n8n UI
-   - Add SSH host credentials
-   - Add Ollama connection details
-   - Configure GitHub PAT, Prometheus endpoints
-
-3. **Enable Triggers:**
-   - Activate webhooks in trigger nodes
-   - Set scheduling for periodic workflows
-   - Test manual execution first
-
-4. **Verify Integrations:**
-   - Test SSH connectivity to all nodes
-   - Verify Ollama inference response times
-   - Check Prometheus metric scraping
-   - Validate webhook payload delivery
+Edit `docker-compose.yml` to set:
+- `N8N_HOST`: Your orchestration node hostname/IP
+- `N8N_PORT`: Port for n8n UI (default 5678)
+- `DB_TYPE`: postgres (recommended for production)
+- `OLLAMA_API`: Arch cluster Ollama endpoint
+- `PROMETHEUS_SCRAPE`: Dell precision monitoring endpoint
 
 ---
 
-## 📋 Backup & Recovery
+## 🔐 Security Considerations
 
-### Backup Workflows
+1. **Credentials Storage**
+   - Store all credentials in n8n's encrypted vault
+   - Never commit credentials to Git
+   - Use `.template` files for sharing
+
+2. **Workflow Authorization**
+   - Restrict webhook access via IP allowlisting
+   - Use signed webhook payloads where applicable
+   - Audit all external integrations
+
+3. **Execution Isolation**
+   - Run workflows in isolated containers
+   - Use dedicated SSH keys per node
+   - Implement rate limiting on popular workflows
+
+---
+
+## 📈 Integration Map
+
+```
+n8n-automation-hub
+    ├── [Ollama] local-ai-sovereign-stack
+    ├── [Monitoring] sovereign-ai-infrastructure
+    ├── [Security] cybersecurity-lab-automation
+    ├── [Skills] sovereign-ai-skills
+    └── [Lab Nodes] my-sovereign-lab
+```
+
+---
+
+## 🛠️ Development & Contributing
+
+### Adding a New Workflow
+
+1. Design workflow logic in n8n UI
+2. Export JSON from n8n
+3. Add to appropriate subdirectory (`workflows/security/`, etc.)
+4. Document in `docs/WORKFLOW_GUIDE.md`
+5. Test in staging before production deployment
+6. Commit with descriptive message
+
+### Testing Workflows
+
 ```bash
-bash scripts/export-workflows.sh backup-$(date +%Y%m%d).json
-```
+# Run workflow via CLI
+n8n execute --file workflows/security/log-analysis-workflow.json
 
-### Backup Full n8n Data
-```bash
-bash scripts/backup-n8n-data.sh
-```
-
-### Restore from Backup
-```bash
-bash scripts/restore-workflows.sh backup-20260705.json
+# Test webhook payload
+curl -X POST http://localhost:5678/webhook/manual-dispatch \
+  -H "Content-Type: application/json" \
+  -d '{"task":"test-task","params":{}}'
 ```
 
 ---
 
-## 🔐 Security Best Practices
+## 📞 Support & Debugging
 
-1. **Credentials Management:**
-   - Use n8n's encrypted credential vault
-   - Rotate SSH keys and API tokens regularly
-   - Never commit credentials to version control
-
-2. **Webhook Security:**
-   - Enable webhook authentication tokens
-   - Use HTTPS for webhook URLs
-   - IP whitelist webhook sources
-
-3. **Audit Logging:**
-   - Enable n8n audit logs
-   - Export logs to centralized SIEM
-   - Monitor workflow execution history
-
-4. **Access Control:**
-   - Restrict n8n UI access via SSH tunnel or VPN
-   - Use strong authentication for n8n accounts
-   - Implement role-based access control
+- **Logs:** `docker logs n8n`
+- **Status:** UI available at `http://localhost:5678`
+- **Metrics:** Check Prometheus for workflow performance
+- **Issues:** Check GitHub Issues for known problems
 
 ---
 
-## 📈 Performance Tuning
-
-- **Concurrency:** Set worker threads based on available CPU cores
-- **Memory:** Allocate sufficient memory for large workflow executions
-- **Database:** Use PostgreSQL backend for production (not SQLite)
-- **Caching:** Enable Redis caching for frequently accessed data
-- **Monitoring:** Use Prometheus to track workflow execution times
-
----
-
-## 🛠️ Troubleshooting
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Workflow hangs | SSH timeout or service unavailable | Check node connectivity, increase timeouts |
-| Webhook not triggered | Firewall blocking inbound traffic | Verify port 5678 open, check firewall rules |
-| Ollama inference slow | GPU memory exhaustion | Check GPU utilization, reduce batch size |
-| Credential errors | Token expired or misconfigured | Rotate credentials, verify connection settings |
-
----
-
-## 📚 Documentation
-
-- **[Workflow Creation Guide](docs/WORKFLOW_GUIDE.md)** — Creating and editing workflows
-- **[Trigger Setup](docs/TRIGGER_SETUP.md)** — Configuring webhooks, schedules, and AI triggers
-- **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Service integrations and API connections
-- **[Credential Management](docs/CREDENTIAL_MANAGEMENT.md)** — Secure credential handling
-- **[Examples](docs/EXAMPLES.md)** — Real-world workflow examples and patterns
-
----
-
-## 🔗 Related Repositories
-
-| Repository | Purpose |
-|------------|----------|
-| [`sovereign-ai-infrastructure`](https://github.com/Dinaverse/sovereign-ai-infrastructure) | Lab infrastructure documentation |
-| [`my-sovereign-lab`](https://github.com/Dinaverse/my-sovereign-lab) | Lab master documentation |
-| [`cybersecurity-lab-automation`](https://github.com/Dinaverse/cybersecurity-lab-automation) | Security automation tooling |
-| [`local-ai-sovereign-stack`](https://github.com/Dinaverse/local-ai-sovereign-stack) | Ollama & AI stack deployment |
-
----
-
-## 📊 Status Dashboard
-
-| Workflow | Status | Last Run | Next Run |
-|----------|--------|----------|----------|
-| Autonomous Executor | ✅ Active | Today 14:32 | 5min |
-| Pro Engineering Agent | ✅ Active | Today 13:15 | On-demand |
-| Master Integrated Hub | ✅ Active | Today 14:00 | 1min |
-| Log Analysis | ✅ Active | Today 14:35 | Real-time |
-| GPU Health Monitor | ✅ Active | Today 14:30 | 30sec |
-| Incident Response | ✅ Standby | Yesterday 09:20 | On-alert |
-
----
-
-*Orchestrating resilience through automation. Every workflow is a step toward autonomous infrastructure.*
+*Orchestrating the sovereign lab through modular, autonomous workflows.*
