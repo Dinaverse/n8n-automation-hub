@@ -2,14 +2,14 @@
 
 > *Centralized n8n workflow definitions for lab orchestration, security automation, infrastructure management, and autonomous incident response within the sovereign lab.*
 
-Workflows are the orchestration layer. Every complex operation — from security scans to infrastructure deployment to incident response — is decomposed into modular, reusable n8n workflows that trigger automatically or on-demand.
+Workflows are the orchestration layer. Every complex operation — from security scans to infrastructure deployment to incident response — is decomposed into modular, reusable n8n workflows that execute autonomously or via AI agent trigger.
 
 ---
 
 ## 🎯 Overview & Purpose
 
 | Icon | Goal | Details |
-|------|------|---------|
+|------|------|----------|
 | 🔄 | **Workflow Orchestration** | Decompose complex operations into modular, reusable workflows |
 | 🤖 | **Autonomous Execution** | Trigger workflows on schedule, webhook, or AI agent decision |
 | 🔗 | **Service Integration** | Connect all lab services: Ollama, Prometheus, security tools, infra nodes |
@@ -121,6 +121,13 @@ Aggregate Results
 Return to Caller + Log Outcome
 ```
 
+**Capabilities:**
+- Task classification and routing
+- Parameter validation and sanitization
+- Parallel execution of independent tasks
+- Result aggregation and error handling
+- Structured logging for audit trails
+
 ---
 
 ### **⚙️ Pro Engineering Agent** (`pro-engineering-agent.json`)
@@ -130,18 +137,49 @@ Infrastructure operations: deployments, configuration, remediation.
 - SSH command execution on nodes
 - Docker container management (restart, scale, logs)
 - Service health checks & automatic recovery
-- Configuration file updates
-- Database operations (backups, restores)
+- Configuration file updates via templating
+- Database operations (backups, restores, migrations)
+- Log aggregation and analysis
+- Performance metric collection
+
+**Supported Operations:**
+- Create/destroy containers
+- Deploy configurations to multiple hosts
+- Execute maintenance routines
+- Rollback failed deployments
 
 ---
 
 ### **🌐 Master Integrated Hub** (`master-integrated.json`)
 Central coordination for multi-service operations connecting all lab services.
 
+**Features:**
+- Unified service orchestration across all lab components
+- Real-time status aggregation from all nodes
+- Centralized event logging and correlation
+- Cross-service dependency management
+- Automated failover and recovery coordination
+
+**Integration Points:**
+- Ollama LLM inference cluster
+- Prometheus metrics collection
+- Suricata IDS threat detection
+- Docker container fleet
+- SSH node management
+- GitHub repository workflows
+
 ---
 
-### **📋 Task Coordinator** (`task-coordinator-reference.json`)
+### **📋 Task Coordinator** (`task-coordinator.json`)
 Priority-based task queue management with duplicate prevention and resource distribution.
+
+**Features:**
+- Priority-based task queuing (High/Normal/Low)
+- Duplicate task detection and consolidation
+- Resource availability checking before execution
+- Fair load distribution across nodes
+- Task timeout and retry management
+- Historical task tracking and analytics
 
 ---
 
@@ -150,11 +188,38 @@ Priority-based task queue management with duplicate prevention and resource dist
 ### **📊 Log Analysis Workflow** (`security/log-analysis-workflow.json`)
 Real-time log aggregation and anomaly detection.
 
+**Functions:**
+- Collect logs from all lab nodes via SSH/syslog
+- Parse and normalize log formats
+- Anomaly detection via statistical analysis
+- Alert on threshold violations
+- Export to central SIEM or Elasticsearch
+
+---
+
 ### **🚨 Threat Detection Workflow** (`security/threat-detection.json`)
 Triggered by Morpheus or security agents on suspected threats.
 
+**Capabilities:**
+- Network traffic analysis (via Suricata alerts)
+- Behavioral anomaly detection
+- Malware signature scanning
+- Log pattern matching
+- Cross-reference with threat intel databases
+- Escalation to incident response workflows
+
+---
+
 ### **🔴 Incident Response Workflow** (`security/incident-response.json`)
 Automated response: Detection → Containment → Analysis → Remediation → Verification
+
+**Steps:**
+1. **Detection:** Receive alert from threat detection workflow
+2. **Containment:** Isolate affected node/service
+3. **Analysis:** Gather forensic data, logs, memory dumps
+4. **Remediation:** Apply patches, restart services, restore from backup
+5. **Verification:** Confirm remediation, return to normal operations
+6. **Documentation:** Generate incident report with timeline
 
 ---
 
@@ -163,8 +228,30 @@ Automated response: Detection → Containment → Analysis → Remediation → V
 ### **💻 GPU Health Monitor** (`infrastructure/gpu-health-monitor.json`)
 Continuous GPU cluster health tracking with automatic remediation on alerts.
 
+**Monitoring:**
+- GPU temperature and power consumption
+- Memory utilization across 4x P106-100 cluster
+- CUDA process monitoring
+- Driver stability checks
+- Thermal throttling detection
+
+**Automatic Actions:**
+- Reduce compute load on high temp
+- Restart stalled CUDA processes
+- Alert on driver crashes
+- Schedule maintenance windows
+
+---
+
 ### **🚀 Node Deployment Workflow** (`infrastructure/node-deployment.json`)
 Automated node setup from bare metal to operational cluster member.
+
+**Stages:**
+- OS provisioning and initial config
+- Dependency installation
+- Service deployment (Docker, monitoring agents)
+- Network configuration and DNS registration
+- Health verification and integration testing
 
 ---
 
@@ -173,134 +260,193 @@ Automated node setup from bare metal to operational cluster member.
 ### **📈 Metric Collection Workflow** (`monitoring/metric-collection.json`)
 Aggregate Prometheus metrics from all nodes every 30 seconds.
 
+**Metrics Collected:**
+- CPU, memory, disk utilization
+- Network bandwidth and latency
+- Docker container stats
+- GPU metrics (temperature, power, utilization)
+- Custom application metrics
+
+---
+
 ### **🚨 Alert Aggregation Workflow** (`monitoring/alert-aggregation.json`)
 Centralize alerts, deduplicate, score severity, notify team.
+
+**Processing:**
+- Alert deduplication (within 5-minute window)
+- Severity scoring based on impact
+- Alert correlation (related alerts grouped)
+- Notification routing (email, Slack, webhook)
+- Historical tracking and alerting trends
 
 ---
 
 ## 🔌 Service Integrations
 
-- **Ollama LLM Calls** — AI-driven analysis and decision making
-- **SSH Command Execution** — Direct node operations
-- **Prometheus Queries** — Metrics-driven automation
-- **Webhook Triggers** — Event-driven workflows
+| Service | Integration | Purpose |
+|---------|-------------|----------|
+| **Ollama LLM** | REST API (port 11434) | AI-driven analysis and decision making |
+| **SSH Nodes** | SSH execution nodes | Direct node operations and commands |
+| **Prometheus** | HTTP API (port 9090) | Metrics-driven automation and alerting |
+| **GitHub** | REST API + webhooks | Repo management, issue automation, CI/CD |
+| **Suricata IDS** | EVE JSON logs | Security event ingestion and triggering |
+| **Docker** | Remote API | Container orchestration and management |
+| **Grafana** | HTTP API | Dashboard updates and visualization |
 
 ---
 
 ## 🚀 Deployment
 
 ### Prerequisites
-- Docker & Docker Compose
-- Port 5678 available
-- SSH keys for node access
+- Docker & Docker Compose (latest versions)
+- Port 5678 available (n8n UI)
+- SSH keys for node access configured
 - Ollama running on port 11434
+- Prometheus running and scraping all nodes
+- Firewall rules allowing webhook ingress
 
 ### Quick Start
 
 ```bash
 # Clone repository
-git clone https://github.com/Dinaverse/n8n-automation-hub
+git clone https://github.com/Dinaverse/n8n-automation-hub.git
 cd n8n-automation-hub
 
-# Configure environment
+# Copy environment template
 cp config/n8n-env.example .env
 
-# Start n8n
+# Edit .env with your settings
+nano .env
+
+# Start n8n with Docker Compose
 docker-compose up -d
 
-# Access UI
+# Access n8n UI
 open http://localhost:5678
 ```
 
-### Import Workflows
+### Initial Setup
 
+1. **Import Workflows:**
+   ```bash
+   bash scripts/import-workflows.sh
+   ```
+
+2. **Configure Credentials:**
+   - Navigate to Credentials in n8n UI
+   - Add SSH host credentials
+   - Add Ollama connection details
+   - Configure GitHub PAT, Prometheus endpoints
+
+3. **Enable Triggers:**
+   - Activate webhooks in trigger nodes
+   - Set scheduling for periodic workflows
+   - Test manual execution first
+
+4. **Verify Integrations:**
+   - Test SSH connectivity to all nodes
+   - Verify Ollama inference response times
+   - Check Prometheus metric scraping
+   - Validate webhook payload delivery
+
+---
+
+## 📋 Backup & Recovery
+
+### Backup Workflows
 ```bash
-./scripts/import-workflows.sh
+bash scripts/export-workflows.sh backup-$(date +%Y%m%d).json
+```
+
+### Backup Full n8n Data
+```bash
+bash scripts/backup-n8n-data.sh
+```
+
+### Restore from Backup
+```bash
+bash scripts/restore-workflows.sh backup-20260705.json
 ```
 
 ---
 
-## 📖 Workflow Development
+## 🔐 Security Best Practices
 
-### Creating a New Workflow
+1. **Credentials Management:**
+   - Use n8n's encrypted credential vault
+   - Rotate SSH keys and API tokens regularly
+   - Never commit credentials to version control
 
-1. Open n8n UI → Click "+" → Create New Workflow
-2. Add Trigger (Webhook, Schedule, Manual)
-3. Build Steps (HTTP, SSH, Logic, etc)
-4. Add Error Handling
-5. Test execution
-6. Export: `./scripts/export-workflows.sh`
-7. Commit to Git
+2. **Webhook Security:**
+   - Enable webhook authentication tokens
+   - Use HTTPS for webhook URLs
+   - IP whitelist webhook sources
 
----
+3. **Audit Logging:**
+   - Enable n8n audit logs
+   - Export logs to centralized SIEM
+   - Monitor workflow execution history
 
-## 🐛 Troubleshooting
-
-### Workflow timeout
-**Symptoms:** Workflow stalls after 5 minutes
-```bash
-docker logs n8n-automation-hub_app_1
-# Edit workflow > Settings > Timeout
-```
-
-### SSH connection fails
-```bash
-ssh-add ~/.ssh/id_lab_master
-ssh -i ~/.ssh/id_lab_master dina@arch-gpu-01
-```
-
-### Ollama not responding
-```bash
-curl http://localhost:11434/api/tags
-docker restart ollama
-nvidia-smi
-```
+4. **Access Control:**
+   - Restrict n8n UI access via SSH tunnel or VPN
+   - Use strong authentication for n8n accounts
+   - Implement role-based access control
 
 ---
 
-## ✅ Operational Status
+## 📈 Performance Tuning
 
-| Workflow | Status | Trigger | Last Run |
-|----------|--------|---------|----------|
-| Autonomous Executor | ✅ Active | Webhook + Schedule | 2026-07-05 12:34 |
-| Engineering Agent | ✅ Active | Manual + Auto-remediation | 2026-07-05 11:22 |
-| Master Integrated | ✅ Active | Continuous | 2026-07-05 12:50 |
-| Task Coordinator | ✅ Active | Queue | 2026-07-05 12:48 |
-| Log Analysis | ✅ Active | Every 10m | 2026-07-05 12:45 |
-| Threat Detection | ✅ Active | Webhook | 2026-07-05 12:30 |
-| GPU Health Monitor | ✅ Active | Every 5m | 2026-07-05 12:50 |
-| Alert Aggregation | ✅ Active | Event-driven | 2026-07-05 12:50 |
+- **Concurrency:** Set worker threads based on available CPU cores
+- **Memory:** Allocate sufficient memory for large workflow executions
+- **Database:** Use PostgreSQL backend for production (not SQLite)
+- **Caching:** Enable Redis caching for frequently accessed data
+- **Monitoring:** Use Prometheus to track workflow execution times
+
+---
+
+## 🛠️ Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Workflow hangs | SSH timeout or service unavailable | Check node connectivity, increase timeouts |
+| Webhook not triggered | Firewall blocking inbound traffic | Verify port 5678 open, check firewall rules |
+| Ollama inference slow | GPU memory exhaustion | Check GPU utilization, reduce batch size |
+| Credential errors | Token expired or misconfigured | Rotate credentials, verify connection settings |
 
 ---
 
 ## 📚 Documentation
 
-| Document | Purpose |
-|----------|---------|
-| [WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md) | Creating and editing workflows |
-| [TRIGGER_SETUP.md](docs/TRIGGER_SETUP.md) | Configuring triggers |
-| [INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) | Service integrations |
-| [CREDENTIAL_MANAGEMENT.md](docs/CREDENTIAL_MANAGEMENT.md) | Credential storage |
-| [EXAMPLES.md](docs/EXAMPLES.md) | Real workflow examples |
+- **[Workflow Creation Guide](docs/WORKFLOW_GUIDE.md)** — Creating and editing workflows
+- **[Trigger Setup](docs/TRIGGER_SETUP.md)** — Configuring webhooks, schedules, and AI triggers
+- **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Service integrations and API connections
+- **[Credential Management](docs/CREDENTIAL_MANAGEMENT.md)** — Secure credential handling
+- **[Examples](docs/EXAMPLES.md)** — Real-world workflow examples and patterns
 
 ---
 
-## 🔗 Integration with Dinaverse Ecosystem
+## 🔗 Related Repositories
 
-| Component | Repository | Integration | Purpose |
-|-----------|-----------|-------------|---------|
-| **AI Skills** | [sovereign-ai-skills](https://github.com/Dinaverse/sovereign-ai-skills) | Skills triggered by workflows | Encode domain expertise |
-| **Security Automation** | [cybersecurity-lab-automation](https://github.com/Dinaverse/cybersecurity-lab-automation) | Incident response triggers | Orchestrate security responses |
-| **Infrastructure** | [sovereign-ai-infrastructure](https://github.com/Dinaverse/sovereign-ai-infrastructure) | Node orchestration | Lab-wide coordination |
-| **Local AI Stack** | [local-ai-sovereign-stack](https://github.com/Dinaverse/local-ai-sovereign-stack) | Ollama integration | LLM execution |
-| **Master Profile** | [Dinaverse](https://github.com/Dinaverse/Dinaverse) | Ecosystem hub | Central documentation |
-
----
-
-## 🎯 Philosophy
-
-> *Workflows are the nervous system of the lab. Every operation should be automated, auditable, and resilient.*
+| Repository | Purpose |
+|------------|----------|
+| [`sovereign-ai-infrastructure`](https://github.com/Dinaverse/sovereign-ai-infrastructure) | Lab infrastructure documentation |
+| [`my-sovereign-lab`](https://github.com/Dinaverse/my-sovereign-lab) | Lab master documentation |
+| [`cybersecurity-lab-automation`](https://github.com/Dinaverse/cybersecurity-lab-automation) | Security automation tooling |
+| [`local-ai-sovereign-stack`](https://github.com/Dinaverse/local-ai-sovereign-stack) | Ollama & AI stack deployment |
 
 ---
 
-*Orchestrating autonomous operations. No cloud. No manual intervention. Full visibility.*
+## 📊 Status Dashboard
+
+| Workflow | Status | Last Run | Next Run |
+|----------|--------|----------|----------|
+| Autonomous Executor | ✅ Active | Today 14:32 | 5min |
+| Pro Engineering Agent | ✅ Active | Today 13:15 | On-demand |
+| Master Integrated Hub | ✅ Active | Today 14:00 | 1min |
+| Log Analysis | ✅ Active | Today 14:35 | Real-time |
+| GPU Health Monitor | ✅ Active | Today 14:30 | 30sec |
+| Incident Response | ✅ Standby | Yesterday 09:20 | On-alert |
+
+---
+
+*Orchestrating resilience through automation. Every workflow is a step toward autonomous infrastructure.*
